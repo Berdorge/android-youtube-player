@@ -2,18 +2,18 @@ package com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
-import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import com.pierfrancescosoffritti.androidyoutubeplayer.R
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayerBridge
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.FullscreenListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.YouTubePlayerListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.toFloat
@@ -23,8 +23,16 @@ import java.util.*
 /**
  * WebView implementation of [YouTubePlayer]. The player runs inside the WebView, using the IFrame Player API.
  */
-internal class WebViewYouTubePlayer constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
-    : WebView(context, attrs, defStyleAttr), YouTubePlayer, YouTubePlayerBridge.YouTubePlayerBridgeCallbacks {
+internal class WebViewYouTubePlayer constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : VideoEnabledWebView(context, attrs, defStyleAttr),
+    YouTubePlayer,
+    YouTubePlayerBridge.YouTubePlayerBridgeCallbacks {
+    val fullscreenHelper by lazy {
+        FullscreenHelper()
+    }
 
     private lateinit var youTubePlayerInitListener: (YouTubePlayer) -> Unit
 
@@ -33,9 +41,17 @@ internal class WebViewYouTubePlayer constructor(context: Context, attrs: Attribu
 
     internal var isBackgroundPlaybackEnabled = false
 
-    internal fun initialize(initListener: (YouTubePlayer) -> Unit, playerOptions: IFramePlayerOptions?) {
+    internal fun initialize(
+        initListener: (YouTubePlayer) -> Unit,
+        playerOptions: IFramePlayerOptions?
+    ) {
         youTubePlayerInitListener = initListener
         initWebView(playerOptions ?: IFramePlayerOptions.default)
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        requestDisallowInterceptTouchEvent(true)
+        return super.onTouchEvent(event)
     }
 
     override fun onYouTubeIFrameAPIReady() = youTubePlayerInitListener(this)
@@ -107,19 +123,28 @@ internal class WebViewYouTubePlayer constructor(context: Context, attrs: Attribu
         addJavascriptInterface(YouTubePlayerBridge(this), "YouTubePlayerBridge")
 
         val htmlPage = Utils
-                .readHTMLFromUTF8File(resources.openRawResource(R.raw.ayp_youtube_player))
-                .replace("<<injectedPlayerVars>>", playerOptions.toString())
+            .readHTMLFromUTF8File(resources.openRawResource(R.raw.ayp_youtube_player))
+            .replace("<<injectedPlayerVars>>", playerOptions.toString())
 
         loadDataWithBaseURL(playerOptions.getOrigin(), htmlPage, "text/html", "utf-8", null)
 
-        // if the video's thumbnail is not in memory, show a black screen
-        webChromeClient = object : WebChromeClient() {
-            override fun getDefaultVideoPoster(): Bitmap? {
-                val result = super.getDefaultVideoPoster()
-
-                return result ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+        val videoClient =
+            object : VideoEnabledWebChromeClient(playerOptions.getFullscreenVideoView(), this) {
+                override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                    println("asdf: new progress: $newProgress")
+                }
             }
-        }
+        webChromeClient = videoClient
+        fullscreenHelper.init(videoClient)
+
+        // if the video's thumbnail is not in memory, show a black screen
+//        webChromeClient = object : WebChromeClient() {
+//            override fun getDefaultVideoPoster(): Bitmap? {
+//                val result = super.getDefaultVideoPoster()
+//
+//                return result ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+//            }
+//        }
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
@@ -127,5 +152,38 @@ internal class WebViewYouTubePlayer constructor(context: Context, attrs: Attribu
             return
 
         super.onWindowVisibilityChanged(visibility)
+    }
+
+    inner class FullscreenHelper {
+        var isFullScreen: Boolean = false
+            private set
+
+        private var videoClient: VideoEnabledWebChromeClient? = null
+
+        private val fullscreenListeners = mutableSetOf<FullscreenListener>()
+
+        fun exitFullScreen() {
+            println("asdf: pressing back")
+            videoClient?.onBackPressed()
+        }
+
+        fun addFullScreenListener(fullScreenListener: FullscreenListener): Boolean {
+            return fullscreenListeners.add(fullScreenListener)
+        }
+
+        fun removeFullScreenListener(fullScreenListener: FullscreenListener): Boolean {
+            return fullscreenListeners.remove(fullScreenListener)
+        }
+
+        internal fun init(videoClient: VideoEnabledWebChromeClient) {
+            this.videoClient = videoClient
+            videoClient.setOnToggledFullscreen { fullscreen ->
+                println("asdf: fullscreen: $fullscreen")
+                isFullScreen = fullscreen
+                for (listener in fullscreenListeners) {
+                    listener.onYouTubePlayerFullscreenToggled(fullscreen)
+                }
+            }
+        }
     }
 }

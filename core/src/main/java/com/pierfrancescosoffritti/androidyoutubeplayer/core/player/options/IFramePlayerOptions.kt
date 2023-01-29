@@ -1,5 +1,6 @@
 package com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options
 
+import android.view.ViewGroup
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -7,7 +8,10 @@ import org.json.JSONObject
  * Options used to configure the IFrame Player. All the options are listed here:
  * [IFrame player parameters](https://developers.google.com/youtube/player_parameters#Parameters)
  */
-class IFramePlayerOptions private constructor(private val playerOptions: JSONObject) {
+class IFramePlayerOptions private constructor(
+    private val playerOptions: JSONObject,
+    private val fullscreenVideoView: ViewGroup?
+) {
 
     companion object {
         val default = Builder().controls(1).build()
@@ -19,6 +23,10 @@ class IFramePlayerOptions private constructor(private val playerOptions: JSONObj
 
     internal fun getOrigin(): String {
         return playerOptions.getString(Builder.ORIGIN)
+    }
+
+    internal fun getFullscreenVideoView(): ViewGroup? {
+        return fullscreenVideoView
     }
 
     class Builder {
@@ -39,6 +47,7 @@ class IFramePlayerOptions private constructor(private val playerOptions: JSONObj
         }
 
         private val builderOptions = JSONObject()
+        private var fullscreenVideoView: ViewGroup? = null
 
         init {
             addInt(AUTO_PLAY, 0)
@@ -49,12 +58,18 @@ class IFramePlayerOptions private constructor(private val playerOptions: JSONObj
             addInt(REL, 0)
             addInt(SHOW_INFO, 0)
             addInt(IV_LOAD_POLICY, 3)
-            addInt(MODEST_BRANDING, 1)
+            addInt(MODEST_BRANDING, 0)
             addInt(CC_LOAD_POLICY, 0)
         }
 
         fun build(): IFramePlayerOptions {
-            return IFramePlayerOptions(builderOptions)
+            return IFramePlayerOptions(builderOptions, fullscreenVideoView)
+        }
+
+        fun enableFullscreen(fullscreenVideoView: ViewGroup): Builder {
+            this.fullscreenVideoView = fullscreenVideoView
+            addInt(FS, 1)
+            return this
         }
 
         /**
