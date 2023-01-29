@@ -31,7 +31,7 @@ dependencies {
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'com.pierfrancescosoffritti.androidyoutubeplayer'
+    PUBLISH_GROUP_ID = 'com.github.Berdorge'
     PUBLISH_VERSION = versions.publishVersion_core
     PUBLISH_ARTIFACT_ID = 'core'
     PUBLISH_DESCRIPTION = 'YouTube Player library for Android, stable and customizable.'
