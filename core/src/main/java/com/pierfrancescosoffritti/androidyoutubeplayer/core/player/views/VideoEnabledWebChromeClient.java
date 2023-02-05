@@ -133,7 +133,6 @@ public class VideoEnabledWebChromeClient extends WebChromeClient implements Medi
         // This method must be manually called on back key press (from this class' onBackPressed() method).
 
         if (isVideoFullscreen) {
-            System.out.println("asdf: toggledFullscreenCallback is null: " + (toggledFullscreenCallback == null));
             // Hide the video view, remove it, and show the non-video view
             activityVideoView.removeView(videoViewContainer);
 
@@ -174,7 +173,6 @@ public class VideoEnabledWebChromeClient extends WebChromeClient implements Medi
      */
     @SuppressWarnings("unused")
     public boolean onBackPressed() {
-        System.out.println("asdf: onBackPressed. Is video fullscreen: " + isVideoFullscreen);
         if (isVideoFullscreen) {
             onHideCustomView();
             return true;

@@ -8,7 +8,6 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebSettings
-import android.webkit.WebView
 import com.pierfrancescosoffritti.androidyoutubeplayer.R
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
@@ -128,23 +127,9 @@ internal class WebViewYouTubePlayer constructor(
 
         loadDataWithBaseURL(playerOptions.getOrigin(), htmlPage, "text/html", "utf-8", null)
 
-        val videoClient =
-            object : VideoEnabledWebChromeClient(playerOptions.getFullscreenVideoView(), this) {
-                override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                    println("asdf: new progress: $newProgress")
-                }
-            }
+        val videoClient = YouTubePlayerWebChromeClient(playerOptions.getFullscreenVideoView(), this)
         webChromeClient = videoClient
         fullscreenHelper.init(videoClient)
-
-        // if the video's thumbnail is not in memory, show a black screen
-//        webChromeClient = object : WebChromeClient() {
-//            override fun getDefaultVideoPoster(): Bitmap? {
-//                val result = super.getDefaultVideoPoster()
-//
-//                return result ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
-//            }
-//        }
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
@@ -163,7 +148,6 @@ internal class WebViewYouTubePlayer constructor(
         private val fullscreenListeners = mutableSetOf<FullscreenListener>()
 
         fun exitFullScreen() {
-            println("asdf: pressing back")
             videoClient?.onBackPressed()
         }
 
@@ -178,7 +162,6 @@ internal class WebViewYouTubePlayer constructor(
         internal fun init(videoClient: VideoEnabledWebChromeClient) {
             this.videoClient = videoClient
             videoClient.setOnToggledFullscreen { fullscreen ->
-                println("asdf: fullscreen: $fullscreen")
                 isFullScreen = fullscreen
                 for (listener in fullscreenListeners) {
                     listener.onYouTubePlayerFullscreenToggled(fullscreen)
